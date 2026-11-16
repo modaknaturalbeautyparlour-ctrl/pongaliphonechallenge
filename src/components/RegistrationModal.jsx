@@ -6,12 +6,7 @@ export default function RegistrationModal({ onClose }) {
   const [formData, setFormData] = useState({
     fullName: '',
     phoneNumber: '',
-    email: '',
-    address: '',
-    city: '',
-    state: '',
-    pincode: '',
-    consent: false
+    city: ''
   })
   
   const [errors, setErrors] = useState({})
@@ -34,34 +29,8 @@ export default function RegistrationModal({ onClose }) {
       newErrors.phoneNumber = 'Please enter a valid 10-digit Indian mobile number'
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required'
-    } else if (!emailRegex.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address'
-    }
-
-    if (!formData.address.trim()) {
-      newErrors.address = 'Address is required'
-    }
-
     if (!formData.city.trim()) {
       newErrors.city = 'City is required'
-    }
-
-    if (!formData.state.trim()) {
-      newErrors.state = 'State is required'
-    }
-
-    const pincodeRegex = /^\d{6}$/
-    if (!formData.pincode.trim()) {
-      newErrors.pincode = 'PIN code is required'
-    } else if (!pincodeRegex.test(formData.pincode)) {
-      newErrors.pincode = 'Please enter a valid 6-digit PIN code'
-    }
-
-    if (!formData.consent) {
-      newErrors.consent = 'You must agree to share your registration progress'
     }
 
     setErrors(newErrors)
@@ -69,8 +38,6 @@ export default function RegistrationModal({ onClose }) {
   }
 
   const trackActivity = async (activityType, description) => {
-    if (!formData.consent) return
-
     try {
       await supabase.from('registration_activity').insert({
         registration_id: sessionId,
@@ -83,10 +50,10 @@ export default function RegistrationModal({ onClose }) {
   }
 
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target
+    const { name, value } = e.target
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: value
     }))
     
     // Clear error for this field
@@ -96,9 +63,7 @@ export default function RegistrationModal({ onClose }) {
   }
 
   const handleFieldBlur = (fieldName) => {
-    if (formData.consent) {
-      trackActivity('field_completed', `Completed: ${fieldName}`)
-    }
+    trackActivity('field_completed', `Completed: ${fieldName}`)
   }
 
   const handleSubmit = async (e) => {
@@ -116,19 +81,14 @@ export default function RegistrationModal({ onClose }) {
       // Check for duplicate phone or email
       const { data: existingRegistrations, error: checkError } = await supabase
         .from('contest_registrations')
-        .select('phone_number, email')
-        .or(`phone_number.eq.${formData.phoneNumber},email.eq.${formData.email}`)
+        .select('phone_number')
+        .eq('phone_number', formData.phoneNumber)
 
       if (checkError) throw checkError
 
       if (existingRegistrations && existingRegistrations.length > 0) {
-        const duplicate = existingRegistrations[0]
-        if (duplicate.phone_number === formData.phoneNumber) {
-          setErrors({ phoneNumber: 'This phone number is already registered' })
-        } else {
-          setErrors({ email: 'This email is already registered' })
-        }
-        trackActivity('duplicate_registration', 'Duplicate phone or email detected')
+        setErrors({ phoneNumber: 'This phone number is already registered' })
+        trackActivity('duplicate_registration', 'Duplicate phone detected')
         setLoading(false)
         return
       }
@@ -143,12 +103,12 @@ export default function RegistrationModal({ onClose }) {
           registration_number: registrationNumber,
           full_name: formData.fullName,
           phone_number: formData.phoneNumber,
-          email: formData.email,
-          delivery_address: formData.address,
+          email: '',
+          delivery_address: '',
           city: formData.city,
-          state: formData.state,
-          pincode: formData.pincode,
-          consent_given: formData.consent,
+          state: '',
+          pincode: '',
+          consent_given: true,
           registration_status: 'completed'
         })
         .select()
@@ -171,23 +131,23 @@ export default function RegistrationModal({ onClose }) {
   if (success) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-        <div className="glassmorphism rounded-3xl p-8 max-w-md w-full text-center animate-scale-in">
-          <CheckCircle className="w-20 h-20 text-green-500 mx-auto mb-6 animate-bounce" />
+        <div className="glassmorphism rounded-2xl md:rounded-3xl p-6 md:p-8 max-w-md w-full text-center animate-scale-in">
+          <CheckCircle className="w-16 h-16 md:w-20 md:h-20 text-green-500 mx-auto mb-4 md:mb-6 animate-bounce" />
           
-          <h2 className="text-3xl font-bold text-pongal-darkGreen mb-4">
+          <h2 className="text-2xl md:text-3xl font-bold text-pongal-darkGreen mb-3 md:mb-4">
             🎉 Registration Successful!
           </h2>
           
-          <p className="text-lg text-gray-700 mb-6">
+          <p className="text-base md:text-lg text-gray-700 mb-4 md:mb-6">
             Your Pongal Contest Registration is Complete!
           </p>
           
-          <div className="bg-pongal-yellow/20 rounded-xl p-4 mb-6">
+          <div className="bg-pongal-yellow/20 rounded-xl p-4 mb-4 md:mb-6">
             <p className="text-sm text-gray-600 mb-2">Your Registration ID</p>
-            <p className="text-2xl font-bold text-pongal-orange">{registrationId}</p>
+            <p className="text-xl md:text-2xl font-bold text-pongal-orange break-all">{registrationId}</p>
           </div>
           
-          <p className="text-sm text-gray-600 mb-8">
+          <p className="text-xs md:text-sm text-gray-600 mb-6 md:mb-8">
             Please save this registration ID for your records. We'll contact you via email or phone if you win!
           </p>
           
@@ -204,22 +164,22 @@ export default function RegistrationModal({ onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
-      <div className="glassmorphism rounded-3xl p-8 max-w-2xl w-full my-8 animate-slide-up">
+      <div className="glassmorphism rounded-2xl md:rounded-3xl p-4 md:p-8 max-w-2xl w-full my-4 md:my-8 animate-slide-up max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-3xl font-bold text-pongal-darkGreen">
+        <div className="flex items-center justify-between mb-4 md:mb-6 sticky top-0 bg-white/80 backdrop-blur-sm pb-2">
+          <h2 className="text-2xl md:text-3xl font-bold text-pongal-darkGreen">
             Contest Registration
           </h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+            className="p-2 hover:bg-gray-200 rounded-full transition-colors flex-shrink-0"
           >
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5 md:w-6 md:h-6" />
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
           {/* Full Name */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -234,7 +194,6 @@ export default function RegistrationModal({ onClose }) {
               className={`w-full px-4 py-3 rounded-xl border-2 ${
                 errors.fullName ? 'border-red-500' : 'border-gray-300'
               } focus:border-pongal-orange focus:outline-none transition-colors`}
-              placeholder="Enter your full name"
             />
             {errors.fullName && (
               <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
@@ -262,7 +221,6 @@ export default function RegistrationModal({ onClose }) {
                 className={`flex-1 px-4 py-3 rounded-xl border-2 ${
                   errors.phoneNumber ? 'border-red-500' : 'border-gray-300'
                 } focus:border-pongal-orange focus:outline-none transition-colors`}
-                placeholder="9876543210"
                 maxLength="10"
               />
             </div>
@@ -274,146 +232,25 @@ export default function RegistrationModal({ onClose }) {
             )}
           </div>
 
-          {/* Email */}
+          {/* City */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Email Address <span className="text-red-500">*</span>
+              City <span className="text-red-500">*</span>
             </label>
             <input
-              type="email"
-              name="email"
-              value={formData.email}
+              type="text"
+              name="city"
+              value={formData.city}
               onChange={handleChange}
-              onBlur={() => handleFieldBlur('Email')}
+              onBlur={() => handleFieldBlur('City')}
               className={`w-full px-4 py-3 rounded-xl border-2 ${
-                errors.email ? 'border-red-500' : 'border-gray-300'
+                errors.city ? 'border-red-500' : 'border-gray-300'
               } focus:border-pongal-orange focus:outline-none transition-colors`}
-              placeholder="your.email@example.com"
             />
-            {errors.email && (
+            {errors.city && (
               <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
                 <AlertCircle className="w-4 h-4" />
-                {errors.email}
-              </p>
-            )}
-          </div>
-
-          {/* Address */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Complete Delivery Address <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              name="address"
-              value={formData.address}
-              onChange={handleChange}
-              onBlur={() => handleFieldBlur('Address')}
-              rows="3"
-              className={`w-full px-4 py-3 rounded-xl border-2 ${
-                errors.address ? 'border-red-500' : 'border-gray-300'
-              } focus:border-pongal-orange focus:outline-none transition-colors resize-none`}
-              placeholder="House/Flat No., Street, Locality"
-            />
-            {errors.address && (
-              <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
-                <AlertCircle className="w-4 h-4" />
-                {errors.address}
-              </p>
-            )}
-          </div>
-
-          {/* City, State, PIN */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                City <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="city"
-                value={formData.city}
-                onChange={handleChange}
-                onBlur={() => handleFieldBlur('City')}
-                className={`w-full px-4 py-3 rounded-xl border-2 ${
-                  errors.city ? 'border-red-500' : 'border-gray-300'
-                } focus:border-pongal-orange focus:outline-none transition-colors`}
-                placeholder="City"
-              />
-              {errors.city && (
-                <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
-                  <AlertCircle className="w-4 h-4" />
-                  {errors.city}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                State <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="state"
-                value={formData.state}
-                onChange={handleChange}
-                onBlur={() => handleFieldBlur('State')}
-                className={`w-full px-4 py-3 rounded-xl border-2 ${
-                  errors.state ? 'border-red-500' : 'border-gray-300'
-                } focus:border-pongal-orange focus:outline-none transition-colors`}
-                placeholder="State"
-              />
-              {errors.state && (
-                <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
-                  <AlertCircle className="w-4 h-4" />
-                  {errors.state}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                PIN Code <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="pincode"
-                value={formData.pincode}
-                onChange={handleChange}
-                onBlur={() => handleFieldBlur('PIN Code')}
-                className={`w-full px-4 py-3 rounded-xl border-2 ${
-                  errors.pincode ? 'border-red-500' : 'border-gray-300'
-                } focus:border-pongal-orange focus:outline-none transition-colors`}
-                placeholder="600001"
-                maxLength="6"
-              />
-              {errors.pincode && (
-                <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
-                  <AlertCircle className="w-4 h-4" />
-                  {errors.pincode}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Consent */}
-          <div className="bg-pongal-cream/50 rounded-xl p-4">
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                name="consent"
-                checked={formData.consent}
-                onChange={handleChange}
-                className="mt-1 w-5 h-5 text-pongal-orange focus:ring-pongal-orange rounded"
-              />
-              <span className="text-sm text-gray-700">
-                <span className="font-semibold">Privacy Consent:</span> I agree to share my registration progress with the admin dashboard for monitoring purposes. My personal information will be used only for contest administration and winner notification.
-                <span className="text-red-500">*</span>
-              </span>
-            </label>
-            {errors.consent && (
-              <p className="text-red-500 text-sm mt-2 flex items-center gap-1">
-                <AlertCircle className="w-4 h-4" />
-                {errors.consent}
+                {errors.city}
               </p>
             )}
           </div>
